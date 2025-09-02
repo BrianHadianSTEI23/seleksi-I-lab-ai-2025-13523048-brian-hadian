@@ -20,5 +20,6 @@ def knn(file : str, n : int, distance : int, algorithm : int, input : pd.Series)
         dictionary : pd.DataFrame = minkowskiDistance(df, input)
         
     # get the n minimum value from dict based on distance
-    neighbors = dictionary.sort_values(by="distances").head(n)
+    filtered = dictionary[dictionary["distances"] < distance]
+    neighbors = filtered.sort_values(by="distances").head(n)
     return neighbors
