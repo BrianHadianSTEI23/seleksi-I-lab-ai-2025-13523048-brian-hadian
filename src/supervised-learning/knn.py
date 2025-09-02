@@ -11,14 +11,14 @@ def knn(file : str, n : int, distance : int, algorithm : int, input : pd.Series)
     # algorithm check
     if algorithm == 1 : # manhattan distance
         # get the dict
-        dict : pd.DataFrame = manhattanDistance(df, input)
+        dictionary : pd.DataFrame = manhattanDistance(df, input)
     elif algorithm == 2 : # euclidean distance
         # get the dict
-        dict : pd.DataFrame = euclideanDistance(df, input)
+        dictionary : pd.DataFrame = euclideanDistance(df, input)
     elif algorithm == 3 :
         # get the dict
-        dict : pd.DataFrame = minkowskiDistance(df, input)
+        dictionary : pd.DataFrame = minkowskiDistance(df, input)
         
     # get the n minimum value from dict based on distance
-    neighbors = dict.sort_values(by="distances").head(n)
+    neighbors = dictionary.sort_values(by="distances").head(n)
     return neighbors
