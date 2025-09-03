@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from src.utils.crossEntropy import crossEntropy
 
 class SoftmaxRegression:
 
@@ -51,7 +50,7 @@ class SoftmaxRegression:
                 z = exp_y / np.sum(exp_y)
 
                 # return the loss function
-                loss = crossEntropy(z, y)
+                loss = self.crossEntropy(z, y)
 
                 # option to break if the loss is already low enough
                 if loss < 0.0000001 :
@@ -82,3 +81,6 @@ class SoftmaxRegression:
         b = b - alpha * dLdb
 
         return w, b
+    
+    def crossEntropy (self, z, y_onehot) : 
+        return -np.sum(y_onehot * np.log(z + 1e-15))
