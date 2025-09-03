@@ -2,52 +2,84 @@ import pandas as pd
 import numpy as np
 import random
 from src.utils.crossEntropy import crossEntropy
-from src.utils.gradientDescent import gradientDescent
 
-def softmax (training : pd.DataFrame, target : str, alpha : float, n : int = 100000) : # -> np.array
+class SoftmaxRegression:
 
-    # init
-    parsedTraining = training.copy()
-    parsedTraining = parsedTraining.drop([target])
+    def __init__(self, training : pd.DataFrame, target : str, alpha : float, regularizationTerm : str, w : np.ndarray, b : np.ndarray, n : int = 100000) -> None:
 
-    # get the dimension needed for w and b (target unique values x input length dimension)
-    d = len(training.columns) - 1 # minus one is for the target column
-    k = len(training[target].unique())
+        self.training = training
+        self.target = target
+        self.alpha = alpha
+        self.n = n
+        self.regularizationTerm = regularizationTerm
+        if (regularizationTerm == "l1") :
+            self.lambda_val = 0.01
+        elif (regularizationTerm == "l2") :
+            self.lambda_val = 0.1
+        else :
+            self.lambda_val = 0
 
-    # construct initial w 
-    w = np.random.rand(d, k)
-    w = w.transpose()
+    def train(self, regularizationTerm) : # -> np.array
 
-    # construct initial b
-    b = np.random.random(k)
+        # init
+        parsedTraining = self.training.copy()
+        parsedTraining = parsedTraining.drop([self.target])
 
-    # do loop of softmax given how many iterations / as many as the data can provide
-    for iteration in range(n) : 
-        # extract the value from the training
-        y = training[target].iloc[iteration]
-        x = parsedTraining.iloc(iteration).to_numpy()
+        # get the dimension needed for w and b (target unique values x input length dimension)
+        d = len(self.training.columns) - 1 # minus one is for the target column
+        k = len(self.training[self.target].unique())
 
-        # get y value
-        y_hat = w @ x + b
+        # construct initial w 
+        w = np.random.rand(d, k)
+        w = w.transpose()
 
-        # get z value (normalization)
-        summation = 0
-        for el in y_hat :
-            summation += np.e ** el
-        z = (np.e**y_hat) / summation
+        # construct initial b
+        b = np.random.random(k)
 
-        # return the loss function
-        loss = crossEntropy(z, y)
+        # do loop of softmax given how many iterations / as many as the data can provide
+        for epoch in range(self.n) :
 
-        # option to break if the loss is already low enough
-        if loss < 0.0000001 :
-            break
+            for iteration in range(len(parsedTraining)) : 
+                # extract the value from the training
+                y = self.training[self.target].iloc[iteration]
+                x = parsedTraining.iloc[iteration].to_numpy()
 
-        # return the gradient descent
-        y_onehot = np.zeros(k)
-        y_onehot[y] = 1
-        difference = z - y_onehot
-        w, b = gradientDescent(alpha, difference, x, w, b)
+                # get y value
+                y_hat = w @ x + b
 
-    # return the w and b value
-    return w, b
+                # get z value (normalization)
+                exp_y = np.exp(y_hat - np.max(y_hat))
+                z = exp_y / np.sum(exp_y)
+
+                # return the loss function
+                loss = crossEntropy(z, y)
+
+                # option to break if the loss is already low enough
+                if loss < 0.0000001 :
+                    return w, b
+
+                # return the gradient descent
+                y_onehot = np.zeros(k)
+                y_onehot[y] = 1
+                difference = z - y_onehot
+                w, b = self.gradientDescent(self.alpha, difference, x, w, b, self.regularizationTerm)
+
+        # return the w and b value
+        return w, b
+    
+    def gradientDescent(self, alpha : float, difference : np.ndarray, x : np.ndarray, w : np.ndarray, b : np.ndarray, regularizationTerm : str):
+
+        dLdW = np.outer(difference, x)
+        if (regularizationTerm == "l1") :
+            # calculate new w
+            dLdW += self.lambda_val * np.sign(w)
+        elif (regularizationTerm == "l2") : 
+            # calculate new w
+            dLdW += self.lambda_val * 2 * w
+        w = w - alpha * dLdW
+
+        # calculate new b
+        dLdb = difference
+        b = b - alpha * dLdb
+
+        return w, b
