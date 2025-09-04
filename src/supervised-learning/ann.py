@@ -41,7 +41,7 @@ class ActivationFunction:
         return np.diag(x) - np.outer(x, x)
     
 class Layer:
-    def __init__(self, activationFunction: str, input_dim: int, output_dim: int, learningRate: float) -> None:
+    def __init__(self, input_dim, output_dim, activationFunction, learningRate):
         self.w = np.random.randn(output_dim, input_dim) * 0.01
         self.b = np.zeros((output_dim, 1))
         self.activationFunction = activationFunction
@@ -67,8 +67,6 @@ class Layer:
         elif self.activationFunction == "sigmoid":
             dz = da * ActivationFunction.sigmoid_derivative(self.z)
         elif self.activationFunction == "softmax":
-            # With cross-entropy, softmax derivative simplifies to (a - y), 
-            # so usually handled outside
             dz = da
         else:
             dz = da  # linear
@@ -85,15 +83,16 @@ class Layer:
         da_prev = self.w.T @ dz
         return da_prev
 
-class ArtificialNeuralNetwork : 
-    def __init__(self, dataset, neuronPerLayer : int, layerNumber : int, activationFunction : str, learningRate : float, target : str = "BORO_NM") -> None:
-
-        self.dataset = dataset
-        self.features = [col for col in self.dataset.columns if col != target]
+class ArtificialNeuralNetwork:
+    def __init__(self, input_dim, hidden_layers, hidden_size, output_dim, activation="relu", learning_rate=0.1):
         self.layers : list[Layer] = []
-        self.learningRate = learningRate
-        for _ in range(layerNumber):
-            self.layers.append(Layer(activationFunction, neuronPerLayer, 1, self.learningRate))    
+        prev_dim = input_dim
+        # hidden layers
+        for _ in range(hidden_layers):
+            self.layers.append(Layer(prev_dim, hidden_size, activation, learning_rate))
+            prev_dim = hidden_size
+        # output layer
+        self.layers.append(Layer(prev_dim, output_dim, "softmax" if output_dim > 1 else "sigmoid", learning_rate))
 
     def forward(self, x : np.ndarray) :
         # input x into the neuron one by one
@@ -102,16 +101,19 @@ class ArtificialNeuralNetwork :
             a = layer.forward(a)
         return a
         
-    def backward(self, y_true, y_pred, learning_rate):
-        da = -(np.divide(y_true, y_pred+1e-9) - np.divide(1-y_true, 1-y_pred+1e-9))
+    def backward(self, y_true, y_pred):
+        # Gradient descent
+        if y_true.shape[0] == 1:  # binary cross-entropy
+            da = -(np.divide(y_true, y_pred+1e-9) - np.divide(1-y_true, 1-y_pred+1e-9))
+        else:  # softmax + cross-entropy
+            da = y_pred - y_true
         for layer in reversed(self.layers):
-            da = layer.backward(da, learning_rate)
+            da = layer.backward(da)
 
-    def train(self, x, y, epochs=1000, learning_rate=0.1):
+    def train(self, x, y, epochs=1000):
         for _ in range(epochs):
             y_pred = self.forward(x)
-            # loss = self.compute_loss(y, y_pred)
-            self.backward(y, y_pred, learning_rate)
+            self.backward(y, y_pred)
     
     def predict(self, x : np.ndarray):
         # this function will return a calculated value based on each layer that has been initiated
