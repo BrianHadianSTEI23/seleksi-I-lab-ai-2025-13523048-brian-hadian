@@ -30,44 +30,44 @@ class KMeans:
     def train(self, dataset: pd.DataFrame) : # dataset has been cleared of label column
         # get clusterNumber of random row
         for i in range(self.clusterNumber):
-            randomRow : np.ndarray = dataset.iloc[np.random.randint(0, len(dataset))].to_numpy()
+            randomRow = dataset.iloc[np.random.randint(0, len(dataset))][self.features].to_numpy()
             self.clusterClasses[Point(randomRow)] = i + 1
 
+        dataset["label"] = -1 # add label column
+
         # calculate the distance of each point (except chosen one) to the random row above
-        for iter, row in enumerate(dataset):
+        for iter in range(self.maxIteration):
             # iterate for each cluster in cluster classes
-            distanceDict = {}
-            currentClass : Point = None
-            for i, cluster in enumerate(self.clusterClasses.keys()):
-                # rowPoint = Point(row)
-                if Point(row) != cluster:
-                    distanceDict[cluster] = cluster.hammingDistance(row)
-            # get the smallest value out of distance dict
-            for i, thing in enumerate(distanceDict.keys()) :
-                if (distanceDict[thing] == min(distanceDict.values())):
-                    # categorize the points (non chosen one) into each class (each class need to be )
-                    dataset["label"] = i
-                    currentClass = thing
-                    break
+            for idx, row in dataset.iterrows():
+                rowPoint = Point(row[self.features].to_numpy())
+                distances :dict[Point, float] = {c: c.hammingDistance(rowPoint.x) for c in self.clusterClasses.keys()}
+                bestCluster, _ = min(distances.items(), key=lambda item: item[1])
+                dataset.at[idx, "label"] = self.clusterClasses[bestCluster]
 
             # get the mean value of each class and make it the new centroid
-            unique_vals = dataset["label"].unique()
-            for unique in unique_vals:
-                currentData = dataset[dataset["label"] == unique]
-                currentData = currentData[self.features]
-                meanPoint = currentData.mean()
+            newClusterClasses : dict[Point, int]= {}
+            for clusterId in range(self.clusterNumber):
+                clusterData = dataset[dataset["label"] == clusterId][self.features]
+                if not clusterData.empty:
+                    newCentroid = clusterData.mode().iloc[0].to_numpy()
+                    newClusterClasses[Point(newCentroid)] = clusterId
             
             # calculate the variance
-            variance = (currentClass.hammingDistance(meanPoint) - self.currentVariance) / self.currentVariance
+            totalVariance = 0
+            for clusterPoint in newClusterClasses.keys():
+                clusterData = dataset[dataset["label"] == newClusterClasses[clusterPoint]][self.features]
+                for _, row in clusterData.iterrows():
+                    totalVariance += clusterPoint.hammingDistance(row.to_numpy())
 
-            # break if the variance is already low
-            if variance < self.THRESHOLD or iter > self.maxIteration:
-                return 
-            # else continue training
+            variance = abs(totalVariance - self.currentVariance) / self.currentVariance
+
+            # break if the variance is already low,             # else continue training
+            if variance < self.THRESHOLD :
+                break 
+
+            self.clusterClasses = newClusterClasses
                 
         # do this until maxIteration or until it hit current variance of max : 1 / (clusterNumber ** (2 ** 0.5)) for each cluster
-       
-
         return
 
     def predict(self, x : np.ndarray):
