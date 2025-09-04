@@ -22,10 +22,13 @@ class PCA :
         currDataset -= self.meanFeature
 
         # calculate covariance matrix
-        covariance = (1 / (len(currDataset) - 1)) * (currDataset.transpose() @ currDataset)
+        covariance = np.cov(currDataset.T, bias=False)
 
         # given covariance matrix (should be square matrix), find the eigen value and eigen vector
         self.eigenvalues, self.eigenvectors = np.linalg.eig(covariance)
+        idx = np.argsort(self.eigenvalues)[::-1]
+        self.eigenvalues = self.eigenvalues[idx]
+        self.eigenvectors = self.eigenvectors[:, idx]
 
         return
     
@@ -35,16 +38,22 @@ class PCA :
         pcaCoordinate = []
 
         # move the x into the center (by substracting it using the mean feature)
-        for eigenvector in self.eigenvectors : 
-            pcaCoordinate.append(eigenvector.transpose() @ x)
-        
+        xCentered : np.ndarray = x - self.meanFeature
+
+        topVectors = self.eigenvectors[:, :self.componentNumber]
+        topValues = self.eigenvalues[:self.componentNumber]
+
+        pcaCoordinate = topVectors.T @ xCentered
+
         # display the coordinate in the pca space and also its weight based on eigen values
-        for i in range(len(pcaCoordinate)):
-            print(f"PCA{i + 1} : {pcaCoordinate[i]}")
+        for i, coor in (enumerate(pcaCoordinate)):
+            print(f"PCA{i + 1} : {coor}")
 
         print("===============================")
 
-        for i in range(len(self.eigenvalues)):
-            print(f"Weight of PC{i + 1} : {self.eigenvalues[i] / sum(self.eigenvalues)}")
+        # normalize the eigen values to get the weight
+        weight = topValues / sum(self.eigenvalues)
+        for i, value in (enumerate(weight)):
+            print(f"Weight of PC{i + 1} : {weight}")
 
         return
