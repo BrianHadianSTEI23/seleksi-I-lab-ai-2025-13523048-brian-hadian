@@ -3,12 +3,14 @@ import numpy as np
 
 class SoftmaxRegression:
 
-    def __init__(self, training : pd.DataFrame, target : str, alpha : float, regularizationTerm : str, w : np.ndarray, b : np.ndarray, n : int = 100000) -> None:
+    def __init__(self, features : list[str], classes : list[str] , target : str, alpha : float, regularizationTerm : str, n : int = 100000) -> None:
 
-        self.training = training
+        # init
         self.target = target
         self.alpha = alpha
         self.n = n
+        self.features = features
+        self.classes = classes
         self.regularizationTerm = regularizationTerm
         if (regularizationTerm == "l1") :
             self.lambda_val = 0.01
@@ -17,53 +19,42 @@ class SoftmaxRegression:
         else :
             self.lambda_val = 0
 
-    def train(self, regularizationTerm) : # -> np.array
-
-        # init
-        parsedTraining = self.training.copy()
-        parsedTraining = parsedTraining.drop([self.target])
-
-        # get the dimension needed for w and b (target unique values x input length dimension)
-        d = len(self.training.columns) - 1 # minus one is for the target column
-        k = len(self.training[self.target].unique())
-
         # construct initial w 
-        w = np.random.rand(d, k)
-        w = w.transpose()
+        self.w = np.random.rand(len(features), len(classes)).transpose()
 
         # construct initial b
-        b = np.random.random(k)
+        self.b = np.random.random(len(classes))
+
+    def train(self, x : np.ndarray, y : np.ndarray) : # -> np.array
 
         # do loop of softmax given how many iterations / as many as the data can provide
-        for epoch in range(self.n) :
 
-            for iteration in range(len(parsedTraining)) : 
-                # extract the value from the training
-                y = self.training[self.target].iloc[iteration]
-                x = parsedTraining.iloc[iteration].to_numpy()
+        # extract the value from the training
+        # y = parsedTraining[self.target].iloc[iteration]
+        # x = parsedTraining.iloc[iteration].to_numpy()
 
-                # get y value
-                y_hat = w @ x + b
+        # get y value
+        y_pred = self.w @ x + self.b
+        y_true = np.zeros(len(self.classes))
+        y_true[y] = 1
 
-                # get z value (normalization)
-                exp_y = np.exp(y_hat - np.max(y_hat))
-                z = exp_y / np.sum(exp_y)
+        # get z value (normalization)
+        exp_y = np.exp(y_pred - np.max(y_pred))
+        z = exp_y / np.sum(exp_y)
 
-                # return the loss function
-                loss = self.crossEntropy(z, y)
 
-                # option to break if the loss is already low enough
-                if loss < 0.0000001 :
-                    return w, b
-
-                # return the gradient descent
-                y_onehot = np.zeros(k)
-                y_onehot[y] = 1
-                difference = z - y_onehot
-                w, b = self.gradientDescent(self.alpha, difference, x, w, b, self.regularizationTerm)
+        # return the loss function
+        loss = self.crossEntropyLoss(z, y_true)
+        # option to break if the loss is already low enough
+        if loss < 0.0000001 :
+            return self.w, self.b
+        
+        # return the gradient descent
+        difference = z - y_true
+        self.gradientDescent(self.alpha, difference, x, self.w, self.b, self.regularizationTerm)
 
         # return the w and b value
-        return w, b
+        return self.w, self.b
     
     def gradientDescent(self, alpha : float, difference : np.ndarray, x : np.ndarray, w : np.ndarray, b : np.ndarray, regularizationTerm : str):
 
@@ -74,13 +65,11 @@ class SoftmaxRegression:
         elif (regularizationTerm == "l2") : 
             # calculate new w
             dLdW += self.lambda_val * 2 * w
-        w = w - alpha * dLdW
+        self.w -= alpha * dLdW
 
         # calculate new b
         dLdb = difference
-        b = b - alpha * dLdb
-
-        return w, b
+        self.b -= alpha * dLdb
     
-    def crossEntropy (self, z, y_onehot) : 
+    def crossEntropyLoss (self, z, y_onehot) : 
         return -np.sum(y_onehot * np.log(z + 1e-15))
