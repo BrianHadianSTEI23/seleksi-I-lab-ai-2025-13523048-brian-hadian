@@ -81,7 +81,7 @@ class QLearningWumpus :
     def updateQTable(self, lastState, reward, currentState, action) :
         # this function will update the q table based on the perceived MAX val on that current state
         currMaxQTable = max(self.qTable[currentState].values())
-        self.qTable[lastState][action] += self.learningRate * (reward + self.qTable[lastState][action] + (self.discountFactor * currMaxQTable) - self.qTable[lastState][action])
+        self.qTable[lastState][action] += self.learningRate * (reward + (self.discountFactor * currMaxQTable) - self.qTable[lastState][action])
         return
 
     def train(self, map : Map) : 
