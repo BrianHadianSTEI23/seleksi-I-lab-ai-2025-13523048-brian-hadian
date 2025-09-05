@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+from typing import Optional
 
 class Point : 
     
@@ -36,6 +37,7 @@ class RegressionTree :
         self.minSample = minSample
         self.MAX_VARIANCE = maxVariance
         self.FEAT_MAX_VARIANCE = maxVariance
+        self.root : Node
 
     def train(self, dataset : pd.DataFrame) :
 
@@ -110,9 +112,27 @@ class RegressionTree :
         self.split(node.left)
         self.split(node.right)
     
-    def predict(self, x : np.ndarray) :
+    def predict(self, x: dict, node: Optional[Node] = None) -> float:
+        if node is None:
+            node = self.root
 
+        # Safety check: if node has no points, return a fallback
+        if node.points is None or len(node.points) == 0:
+            return 0.0  # or np.nan if you want to track missing
 
+        # Leaf node: no further split
+        if node.feature is None:
+            return float(np.mean([p.value["Start"] for p in node.points]))
 
-        return
-        
+        # Compute split point
+        split_point = float(np.mean([p.value[node.feature] for p in node.points]))
+
+        # Choose branch safely
+        if node.left is None or node.right is None:
+            # If children are missing, fallback to current node's mean
+            return float(np.mean([p.value["Start"] for p in node.points]))
+
+        if x[node.feature] < split_point:
+            return self.predict(x, node.left)
+        else:
+            return self.predict(x, node.right)
