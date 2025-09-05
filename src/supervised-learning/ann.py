@@ -63,42 +63,46 @@ class Layer:
             self.a = ActivationFunction.linear(self.z)
         return self.a
 
-    def backward(self, yTrue = None, difference = None):
-
-        activationDerivativeVal = 0
+    def backward(self, yTrue=None, difference=None):
+        # activation derivative
         if self.activationFunction == "sigmoid":
             activationDerivativeVal = ActivationFunction.sigmoid_derivative(self.z)
         elif self.activationFunction == "relu":
             activationDerivativeVal = ActivationFunction.relu_derivative(self.z)
         elif self.activationFunction == "softmax":
-            activationDerivativeVal =  ActivationFunction.softmax_derivative(self.z)
+            activationDerivativeVal = ActivationFunction.softmax_derivative(self.z)
         else:
             activationDerivativeVal = ActivationFunction.linear_derivative(self.z)
-        
-        dz = 0
+
+        # calculate dz
+        dz = np.zeros_like(self.a)
         if yTrue is not None:
             # Output layer
             if self.lossFunction == "crossEntropy":
-                if self.activationFunction == "sigmoid" or self.activationFunction == "softmax":
-                    dz = self.a - yTrue  # simplified derivative
+                if self.activationFunction in ["sigmoid", "softmax"]:
+                    dz = self.a - yTrue  # simplified derivative for CE with sigmoid/softmax
                 else:
                     dz = (self.a - yTrue) * activationDerivativeVal
             elif self.lossFunction == "mse":
                 dz = 2 * (self.a - yTrue) * activationDerivativeVal
         else:
-            # Hidden layer
-            dz *= activationDerivativeVal
+            # Hidden layer: use incoming gradient
+            if difference is None:
+                raise ValueError("Hidden layer backward must receive difference from next layer")
+            dz = difference * activationDerivativeVal
 
-        dw = (dz @ self.x.T) 
+        # Gradients for weights and bias
+        dw = dz @ self.x.T
         db = np.sum(dz, axis=1, keepdims=True)
 
-        # update params
+        # Update parameters
         self.w -= self.learningRate * dw
         self.b -= self.learningRate * db
 
-        # return gradient to previous layer
+        # Return gradient for previous layer
         differencePrev = self.w.T @ dz
         return differencePrev
+
 
 class ArtificialNeuralNetwork:
     def __init__(self, inputDim, hiddenLayerNum, hiddenLayerSize, outputDim, lossFunction : str, activation="relu", alpha=0.1):
