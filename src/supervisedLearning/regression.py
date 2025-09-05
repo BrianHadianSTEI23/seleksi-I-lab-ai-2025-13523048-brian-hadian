@@ -5,16 +5,14 @@ from itertools import combinations_with_replacement
 
 class PolynomialRegression : 
 
-    def __init__(self, degree : int, learningRate : float, datasetSize : int, regularizationTrem : str, classes : list[str], features : list[str], iteration = 100000) -> None:
+    def __init__(self, degree : int, learningRate : float, regularizationTrem, features : list[str], iteration = 100000) -> None:
 
         self.degree = degree
-        self.classes = classes
         self.features = features
         self.beta : np.ndarray = np.zeros(len(features))
         self.learningRate = learningRate
         self.regularizationTerm = regularizationTrem
         self.iteration = iteration
-        self.datasetSize = datasetSize
 
     def train(self, dataset: pd.DataFrame, y: np.ndarray):
         # Expand dataset into polynomial features
