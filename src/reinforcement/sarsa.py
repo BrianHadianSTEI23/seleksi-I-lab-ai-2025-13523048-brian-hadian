@@ -92,6 +92,16 @@ class SARSAWumpus :
         self.winCount : int = 0
         pass
 
+    def displayQTable(self):
+        print("===== Q-Table =====")
+        for state in sorted(self.qTable.keys()):
+            print(f"State {state}:")
+            actions = self.qTable[state]
+            # sort actions by Q-value descending for easier reading
+            sorted_actions = sorted(actions.items(), key=lambda x: x[1], reverse=True)
+            for action, value in sorted_actions:
+                print(f"  {action:12} : {value:8.2f}")
+            print()
         
     def updateQTable(self, lastState, reward, currentState, action) :
         # this function will update the q table based on the perceived MAX val on that current state
@@ -139,4 +149,54 @@ class SARSAWumpus :
 
         return 
     
+    def visualizePath(self, map_env: Map, max_steps: int = 20):
+        # Simulates and prints the path taken by the hero according to the learned Q-table.
+        state = (3, 0)
+        goldAcquired = False
+        steps = 0
+
+        def get_cell_representation(cell, hero_here, gold_acquired):
+            # Start with hero
+            if hero_here:
+                return 'h'
+            rep = ''
+            for el in cell:
+                if el == "wumpus": rep += 'w'
+                elif el == "pit": rep += 'p'
+                elif el == "stench": rep += 's'
+                elif el == "breeze": rep += 'b'
+                elif el == "gold":
+                    rep += 'g' if not gold_acquired else ''
+            return rep if rep else '.'
+
+        print("===== Path Visualization =====")
+        while steps < max_steps:
+            grid = []
+            for i in range(4):
+                row = []
+                for j in range(4):
+                    hero_here = (i, j) == state
+                    cell = map_env.map.get((i, j), [])
+                    row.append(get_cell_representation(cell, hero_here, goldAcquired))
+                grid.append(row)
+
+            # Print grid
+            for row in grid:
+                print(' '.join(f"{c:2}" for c in row))
+            print('-'*10)
+
+            # Choose next action (greedy from Q-table)
+            action = max(self.qTable[state], key=lambda a: self.qTable[state][a])
+
+            # Take step
+            newState, reward, done, goldAcquired = map_env.evaluateState(state, action, self.winCount, goldAcquired)
+
+            state = newState
+            steps += 1
+
+            if done:
+                print("Yey Selesai!")
+                break
+
+
 
