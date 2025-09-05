@@ -1,5 +1,6 @@
 
 import numpy as np
+import pandas as pd
 from itertools import combinations_with_replacement
 
 class PolynomialRegression : 
@@ -9,34 +10,36 @@ class PolynomialRegression :
         self.degree = degree
         self.classes = classes
         self.features = features
-        self.beta : np.ndarray = np.ndarray([])
+        self.beta : np.ndarray = np.zeros(len(features))
         self.learningRate = learningRate
         self.regularizationTerm = regularizationTrem
         self.iteration = iteration
         self.datasetSize = datasetSize
 
-    def train(self, X : np.ndarray, y : np.ndarray) : # y is a 1x1 value (the label) 
-
-        # train the model according to the iteration
+    def train(self, dataset: pd.DataFrame, y: np.ndarray):
+        # Expand dataset into polynomial features
+        xPoly = np.array([self.polynomialFeatures(x.to_numpy(), self.degree) 
+                        for _, x in dataset[self.features].iterrows()])
+        
+        m, _ = xPoly.shape
+        
         for epoch in range(self.iteration):
-            for i in range(self.datasetSize):
-                # given a dataset and its degree, compute the y value based on the polynomial function (with its corresponding degree)
-                xPoly = np.array([self.polynomialFeatures(x, self.degree) for x in X])
-
-                # # after getting the xPoly value, beta matrix can be found using the derivative of the mean squared error
-                # newBeta = np.linalg.inv(xPoly.T @ xPoly) @ xPoly.transpose() @ y
-
-                # # update the beta matrix
-                # self.beta = newBeta
-
-            # calculate the loss function 
-            loss = 0
-            for j in range(self.datasetSize):
-                yPred = np.dot(self.beta, self.polynomialFeatures(, self.degree))
-                loss += self.meanSquaredError()
-
+            yPred = xPoly @ self.beta
+            error = yPred - y
+            
+            # gradient (MSE)
+            grad = (1/m) * (xPoly.T @ error)
+            
+            # regularization
+            if self.regularizationTerm == "l2":
+                grad += (self.learningRate / m) * self.beta
+            elif self.regularizationTerm == "l1":
+                grad += (self.learningRate / m) * np.sign(self.beta)
+            
+            # update beta
+            self.beta -= self.learningRate * grad
+        
         return self.beta
-
         
     def polynomialFeatures(self, x: np.ndarray, degree: int):
         # this function will expand input features x into polynomial terms up to given degree.
@@ -45,7 +48,7 @@ class PolynomialRegression :
         
         for deg in range(1, degree + 1):
             for comb in combinations_with_replacement(range(n_features), deg):
-                term = np.prod([x[i] for i in comb])
+                term = float(np.prod([x[i] for i in comb]))
                 features.append(term)
         
         return np.array(features)
