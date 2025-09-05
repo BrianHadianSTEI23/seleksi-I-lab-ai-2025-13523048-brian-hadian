@@ -7,6 +7,21 @@ class Map :
         # init of map 
         self.map : dict[tuple[int, int], list[str]] = { # jangan lupa input semuanya
             (0, 0) : ["stench"],
+            (0, 1) : [],
+            (0, 2) : ["breeze"],
+            (0, 3) : ["pit"],
+            (1, 0) : ["wumpus"],
+            (1, 1) : ["breeze", "stench", "gold"],
+            (1, 2) : ["pit"],
+            (1, 3) : ["breeze"],
+            (2, 0) : ["stench"],
+            (2, 1) : ["stench"],
+            (2, 2) : ["breeze"],
+            (2, 3) : ["stench"],
+            (3, 0) : [],
+            (3, 1) : ["breeze"],
+            (3, 2) : ["pit"],
+            (3, 3) : ["breeze"],
         }
 
     def evaluateState(self, state, action, winCount: int, goldAcquired: bool):
