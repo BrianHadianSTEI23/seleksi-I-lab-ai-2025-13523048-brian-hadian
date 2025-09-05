@@ -6,7 +6,6 @@ class Point:
         self.value : np.ndarray = x
         self.corePoint : bool = False
         self.clusterId = -1 # current constant and this will be changed later when it is inputted into the dbscan
-        pass
 
 class Distance :
     @staticmethod
