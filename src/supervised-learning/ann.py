@@ -38,14 +38,17 @@ class ActivationFunction:
 
     @staticmethod
     def softmax_derivative(x : np.ndarray):
-        return np.diag(x) - np.outer(x, x)
+        s = ActivationFunction.softmax(x)
+        return s * (1 - s)
     
 class Layer:
-    def __init__(self, input_dim, output_dim, activationFunction, learningRate):
-        self.w = np.random.randn(output_dim, input_dim) * 0.01
-        self.b = np.zeros((output_dim, 1))
+    def __init__(self, inputDim, outputDim, activationFunction, learningRate, lossFunction):
+        self.w = np.random.randn(outputDim, inputDim) * 0.01
+        self.b = np.zeros((outputDim, 1))
         self.activationFunction = activationFunction
         self.learningRate = learningRate
+        self.lossFunction = lossFunction
+        
 
     def forward(self, x: np.ndarray):
         self.x = x  # store input for backward
@@ -60,60 +63,76 @@ class Layer:
             self.a = ActivationFunction.linear(self.z)
         return self.a
 
-    def backward(self, da: np.ndarray):
-        # da: gradient from next layer
-        if self.activationFunction == "relu":
-            dz = da * ActivationFunction.relu_derivative(self.z)
-        elif self.activationFunction == "sigmoid":
-            dz = da * ActivationFunction.sigmoid_derivative(self.z)
-        elif self.activationFunction == "softmax":
-            dz = da
-        else:
-            dz = da  # linear
+    def backward(self, yTrue = None, difference = None):
 
-        m = self.x.shape[1]  # batch size
-        dw = (dz @ self.x.T) / m
-        db = np.sum(dz, axis=1, keepdims=True) / m
+        activationDerivativeVal = 0
+        if self.activationFunction == "sigmoid":
+            activationDerivativeVal = ActivationFunction.sigmoid_derivative(self.z)
+        elif self.activationFunction == "relu":
+            activationDerivativeVal = ActivationFunction.relu_derivative(self.z)
+        elif self.activationFunction == "softmax":
+            activationDerivativeVal =  ActivationFunction.softmax_derivative(self.z)
+        else:
+            activationDerivativeVal = ActivationFunction.linear_derivative(self.z)
+        
+        dz = 0
+        if yTrue is not None:
+            # Output layer
+            if self.lossFunction == "crossEntropy":
+                if self.activationFunction == "sigmoid" or self.activationFunction == "softmax":
+                    dz = self.a - yTrue  # simplified derivative
+                else:
+                    dz = (self.a - yTrue) * activationDerivativeVal
+            elif self.lossFunction == "mse":
+                dz = 2 * (self.a - yTrue) * activationDerivativeVal
+        else:
+            # Hidden layer
+            dz *= activationDerivativeVal
+
+        dw = (dz @ self.x.T) 
+        db = np.sum(dz, axis=1, keepdims=True)
 
         # update params
         self.w -= self.learningRate * dw
         self.b -= self.learningRate * db
 
         # return gradient to previous layer
-        da_prev = self.w.T @ dz
-        return da_prev
+        differencePrev = self.w.T @ dz
+        return differencePrev
 
 class ArtificialNeuralNetwork:
-    def __init__(self, input_dim, hidden_layers, hidden_size, output_dim, activation="relu", learning_rate=0.1):
+    def __init__(self, inputDim, hiddenLayerNum, hiddenLayerSize, outputDim, lossFunction : str, activation="relu", alpha=0.1):
         self.layers : list[Layer] = []
-        prev_dim = input_dim
-        # hidden layers
-        for _ in range(hidden_layers):
-            self.layers.append(Layer(prev_dim, hidden_size, activation, learning_rate))
-            prev_dim = hidden_size
+        prevDim = inputDim
+        self.lossFunction = lossFunction
+        # hidden layer
+        for _ in range(hiddenLayerNum):
+            self.layers.append(Layer(prevDim, hiddenLayerSize, activation, alpha, self.lossFunction))
+            prevDim = hiddenLayerSize
         # output layer
-        self.layers.append(Layer(prev_dim, output_dim, "softmax" if output_dim > 1 else "sigmoid", learning_rate))
+        self.layers.append(Layer(prevDim, 1, activation, alpha, self.lossFunction)) # this will be used for regression, therefore the last layer must be one neuron
 
     def forward(self, x : np.ndarray) :
-        # input x into the neuron one by one
         a = x
         for layer in self.layers:
             a = layer.forward(a)
         return a
         
-    def backward(self, y_true, y_pred):
-        # Gradient descent
-        if y_true.shape[0] == 1:  # binary cross-entropy
-            da = -(np.divide(y_true, y_pred+1e-9) - np.divide(1-y_true, 1-y_pred+1e-9))
-        else:  # softmax + cross-entropy
-            da = y_pred - y_true
-        for layer in reversed(self.layers):
-            da = layer.backward(da)
+    def backward(self, yTrue):
+        # Gradient descent based on lossFUnction
+        dz = None
+        for i, layer in enumerate(reversed(self.layers)):
+            if i == 0:
+                # Output layer
+                dz = layer.backward(yTrue=yTrue)
+            else:
+                dz = layer.backward(difference=dz)
+        
 
     def train(self, x, y, epochs=1000):
         for _ in range(epochs):
-            y_pred = self.forward(x)
-            self.backward(y, y_pred)
+            yPred = self.forward(x)
+            self.backward(y)
     
     def predict(self, x : np.ndarray):
         # this function will return a calculated value based on each layer that has been initiated
